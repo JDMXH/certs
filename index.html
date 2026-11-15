@@ -11,88 +11,99 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
 
 #bg{position:fixed;inset:0;z-index:0;display:block}
 .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(120% 100% at 50% 40%, transparent 38%, rgba(0,0,0,.55) 100%)}
-.grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background:radial-gradient(120% 100% at 50% 40%, transparent 36%, rgba(0,0,0,.60) 100%)}
+.grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.045;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.5'/></svg>")}
 
-/* ---- two liquid-glass tiles ---- */
 .tiles{position:relative;z-index:3;display:grid;grid-template-columns:1fr 1fr;gap:22px;height:100vh;padding:26px}
 
-/* liquid glass = strong blur + saturation, a bright inner top edge, a soft inner
-   shadow at the bottom, and a moving specular highlight. The ::before ring gives the
-   refractive rim; the .sheen layer tracks the cursor as the specular hotspot. */
+/* ---------- liquid glass pane ---------- */
 .tile{position:relative;display:flex;flex-direction:column;justify-content:flex-end;
-  border-radius:30px;overflow:hidden;text-decoration:none;color:#fff;cursor:pointer;
-
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 38%, rgba(255,255,255,.03) 100%);
-  backdrop-filter:blur(26px) saturate(190%) brightness(1.06);
-  -webkit-backdrop-filter:blur(26px) saturate(190%) brightness(1.06);
-
-  border:1px solid rgba(255,255,255,.30);
+  border-radius:32px;overflow:hidden;text-decoration:none;color:#fff;cursor:pointer;
+  isolation:isolate;
+  background:linear-gradient(180deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.045) 42%, rgba(255,255,255,.025) 100%);
+  border:1px solid rgba(255,255,255,.22);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.55),
-    inset 0 -1px 0 rgba(255,255,255,.14),
-    inset 1px 0 0 rgba(255,255,255,.16),
-    inset -1px 0 0 rgba(255,255,255,.16),
-    inset 0 -28px 48px -28px rgba(0,0,0,.55),
-    0 18px 44px rgba(0,0,0,.42);
+    inset 0 1px 0 rgba(255,255,255,.60),
+    inset 0 -1px 0 rgba(255,255,255,.10),
+    inset 0 -30px 52px -30px rgba(0,0,0,.55),
+    0 24px 60px rgba(0,0,0,.46);
+  transition:transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .55s, border-color .4s;
+}
 
-  transition:transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s, border-color .35s, backdrop-filter .5s;
-  isolation:isolate}
+/* the refracting layer: this is what bends the background at the rim.
+   --glass is the displacement map (data URI, built by JS) and --edge is the
+   border-width used by the feDisplacementMap scale. */
+.tile .refract{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+  backdrop-filter:blur(3px) saturate(180%) brightness(1.08);
+  -webkit-backdrop-filter:blur(3px) saturate(180%) brightness(1.08);
+  /* edge-only magnification: scale up slightly with a radial mask so the rim
+     shows a compressed, lens-like copy of what is behind */
+  -webkit-mask:radial-gradient(140% 130% at 50% 50%, transparent 46%, #000 78%);
+  mask:radial-gradient(140% 130% at 50% 50%, transparent 46%, #000 78%);
+  transform:scale(1.012);
+}
 
-/* refraction rim: a hairline gradient ring that reads as a glass edge */
-.tile::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:2;
-  background:linear-gradient(150deg, rgba(255,255,255,.75), rgba(255,255,255,.06) 32%, rgba(255,255,255,.04) 62%, rgba(255,255,255,.42));
+/* deep frosted core (what Apple calls the "material body") */
+.tile .frost{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+  backdrop-filter:blur(1.5px) saturate(140%);
+  -webkit-backdrop-filter:blur(1.5px) saturate(140%);
+  -webkit-mask:radial-gradient(120% 110% at 50% 50%, #000 52%, transparent 76%);
+  mask:radial-gradient(120% 110% at 50% 50%, #000 52%, transparent 76%);
+}
+
+/* specular rim: bright at the pointer side, hue-fringed like a real glass edge */
+.tile::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.25px;z-index:4;
+  background:linear-gradient(var(--rim-angle,150deg),
+    rgba(255,255,255,.92) 0%,
+    rgba(190,215,255,.30) 18%,
+    rgba(255,255,255,.04) 38%,
+    rgba(255,210,250,.10) 62%,
+    rgba(255,255,255,.55) 88%,
+    rgba(255,255,255,.90) 100%);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;opacity:.85}
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  pointer-events:none;opacity:.9;transition:opacity .4s}
 
-/* bottom scrim so the label stays readable over bright background */
-.tile::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;
-  background:linear-gradient(to top, rgba(3,4,10,.60) 0%, rgba(3,4,10,.12) 46%, transparent 72%)}
+/* bottom scrim for label legibility */
+.tile::after{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;
+  background:linear-gradient(to top, rgba(3,4,10,.58) 0%, rgba(3,4,10,.10) 46%, transparent 70%)}
 
-/* specular hotspot following the cursor */
-.tile .sheen{position:absolute;inset:0;z-index:0;opacity:0;transition:opacity .45s;
-  background:radial-gradient(520px 280px at var(--mx,50%) var(--my,0%),
-    rgba(255,255,255,.34), rgba(255,255,255,.10) 38%, transparent 68%);
+.tile .sheen{position:absolute;inset:0;z-index:2;opacity:0;transition:opacity .5s;pointer-events:none;
+  background:radial-gradient(560px 300px at var(--mx,50%) var(--my,0%),
+    rgba(255,255,255,.42), rgba(255,255,255,.12) 34%, transparent 66%);
   mix-blend-mode:screen}
 .tile:hover .sheen{opacity:1}
 
-/* faint caustics: two slow curved highlights that drift, like light through glass */
-.tile .caustics{position:absolute;inset:-30%;z-index:0;opacity:.35;pointer-events:none;
+.tile .caustics{position:absolute;inset:-30%;z-index:2;opacity:.30;pointer-events:none;
   background:
-    radial-gradient(38% 26% at 26% 30%, rgba(130,180,255,.30), transparent 62%),
-    radial-gradient(34% 24% at 74% 68%, rgba(255,140,220,.24), transparent 62%);
-  filter:blur(18px);
-  animation:caustic 16s ease-in-out infinite alternate}
+    radial-gradient(38% 26% at 26% 30%, rgba(130,180,255,.34), transparent 62%),
+    radial-gradient(34% 24% at 74% 68%, rgba(255,140,220,.26), transparent 62%);
+  filter:blur(20px);animation:caustic 17s ease-in-out infinite alternate}
 @keyframes caustic{
   from{transform:translate3d(-3%, -2%, 0) rotate(-2deg) scale(1)}
-  to{transform:translate3d(4%, 3%, 0) rotate(3deg) scale(1.08)}
+  to{transform:translate3d(4%, 3%, 0) rotate(3deg) scale(1.09)}
 }
 
-.tile:hover{transform:translateY(-8px);border-color:rgba(255,255,255,.55);
-  backdrop-filter:blur(30px) saturate(210%) brightness(1.12);
-  -webkit-backdrop-filter:blur(30px) saturate(210%) brightness(1.12);
+.tile:hover{transform:translateY(-7px);border-color:rgba(255,255,255,.40);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.75),
-    inset 0 -1px 0 rgba(255,255,255,.20),
-    inset 0 -34px 56px -30px rgba(0,0,0,.60),
-    0 34px 80px rgba(0,0,0,.50)}
-.tile.t1:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 34px 80px rgba(61,110,240,.45)}
-.tile.t2:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 34px 80px rgba(192,52,138,.45)}
+    inset 0 1px 0 rgba(255,255,255,.80),
+    inset 0 -30px 56px -30px rgba(0,0,0,.60),
+    0 36px 84px rgba(0,0,0,.52)}
+.tile:hover::before{opacity:1}
 
-.tile-inner{padding:36px 40px 40px;position:relative;z-index:3}
+.tile-inner{padding:36px 40px 40px;position:relative;z-index:5}
 .tile .ico{font-size:46px;line-height:1;margin-bottom:18px;display:block;transition:transform .5s;filter:drop-shadow(0 8px 22px rgba(0,0,0,.55))}
 .tile:hover .ico{transform:scale(1.14) rotate(-5deg)}
 .tile h2{margin:0 0 8px;font-size:31px;font-weight:750;letter-spacing:.6px;text-shadow:0 2px 18px rgba(0,0,0,.60)}
-.tile p{margin:0;color:rgba(255,255,255,.78);font-size:14px}
+.tile p{margin:0;color:rgba(255,255,255,.80);font-size:14px}
 .tile .arrow{margin-top:24px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:650;
-  color:rgba(255,255,255,.95);transition:gap .35s}
+  color:rgba(255,255,255,.96);transition:gap .35s}
 .tile:hover .arrow{gap:18px}
-.badge{position:absolute;top:24px;right:26px;z-index:3;font-size:12px;padding:5px 13px;border-radius:999px;
+.badge{position:absolute;top:24px;right:26px;z-index:5;font-size:12px;padding:5px 13px;border-radius:999px;
   background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);
   backdrop-filter:blur(10px);letter-spacing:.3px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.40)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
 
 .wipe{position:fixed;inset:0;z-index:99;background:#05060c;opacity:0;pointer-events:none;transition:opacity .22s ease}
 .wipe.on{opacity:1}
@@ -105,7 +116,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
   .badge{top:18px;right:20px}
 }
 @media (prefers-reduced-motion:reduce){
-  .tile,.tile .ico,.tile .arrow{transition:none}
+  .tile,.tile .ico,.tile .arrow,.tile .caustics{transition:none;animation:none}
 }
 </style>
 </head>
@@ -116,8 +127,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
 
 <div class="tiles">
   <a class="tile t1" href="album.html">
-    <span class="caustics"></span>
-    <span class="sheen"></span>
+    <span class="refract"></span><span class="frost"></span><span class="caustics"></span><span class="sheen"></span>
     <span class="badge">相册</span>
     <div class="tile-inner">
       <span class="ico">🖼️</span>
@@ -127,8 +137,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
     </div>
   </a>
   <a class="tile t2" href="links.html">
-    <span class="caustics"></span>
-    <span class="sheen"></span>
+    <span class="refract"></span><span class="frost"></span><span class="caustics"></span><span class="sheen"></span>
     <span class="badge">珍藏资源</span>
     <div class="tile-inner">
       <span class="ico">📚</span>
@@ -147,9 +156,27 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
   const ctx = cv.getContext('2d', { alpha: false });
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 0, H = 0, DPR = 1;
-  let particles = [];
-  let blobs = [];
+  let particles = [], blobs = [], whales = [];
   const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
+
+  const logo = new Image();
+  logo.src = 'data:image/png;base64,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';
+
+  function makeWhale(i, W, H) {
+    const scale = i === 0 ? 1 : 0.55 + Math.random() * 0.35;
+    return {
+      x: Math.random() * W,
+      y: H * (0.15 + Math.random() * 0.7),
+      size: (i === 0 ? 150 : 60 + Math.random() * 70) * scale,
+      speed: (i === 0 ? 26 : 46 + Math.random() * 40) * (Math.random() < 0.5 ? -1 : 1),
+      amp: 18 + Math.random() * 26,
+      freq: 0.0016 + Math.random() * 0.0014,
+      phase: Math.random() * Math.PI * 2,
+      time: Math.random() * 1000,
+      bob: Math.random() * Math.PI * 2,
+      alpha: i === 0 ? 0.42 : 0.55 + Math.random() * 0.3,
+    };
+  }
 
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -159,13 +186,12 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
 
     const count = Math.round(Math.min(150, Math.max(50, (W * H) / 14000)));
     particles = Array.from({ length: count }, () => {
-      const depth = Math.random() * 0.8 + 0.2;         // 0.2 = far, 1 = near
+      const depth = Math.random() * 0.8 + 0.2;
       return {
         x: Math.random() * W, y: Math.random() * H,
         vx: (Math.random() - 0.5) * 0.22 * depth,
         vy: (Math.random() - 0.5) * 0.22 * depth,
-        r: 0.7 + depth * 1.9,
-        depth,
+        r: 0.7 + depth * 1.9, depth,
         hue: Math.random() < 0.5 ? 215 : 320,
         tw: Math.random() * Math.PI * 2,
       };
@@ -176,20 +202,47 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
       { x: 0.82, y: 0.76, r: 0.46, hue: 322, sp: 0.00011, ph: 1.7 },
       { x: 0.55, y: 0.10, r: 0.32, hue: 265, sp: 0.00017, ph: 3.1 },
     ];
+    if (!whales.length) whales = Array.from({ length: 4 }, (_, i) => makeWhale(i, W, H));
+  }
+
+  function drawWhale(w, dt) {
+    if (!logo.complete || !logo.naturalWidth) return;
+    w.time += dt;
+    w.x += w.speed * dt;
+    if (w.speed > 0 && w.x > W + w.size) { w.x = -w.size; w.y = H * (0.15 + Math.random() * 0.7); }
+    if (w.speed < 0 && w.x < -w.size) { w.x = W + w.size; w.y = H * (0.15 + Math.random() * 0.7); }
+
+    const phase = w.time * w.freq * 1.8 + w.phase;
+    const yBase = w.y + Math.sin(phase) * w.amp;
+    const bob = Math.sin(w.time * 0.0022 + w.bob) * 5;
+    const dir = w.speed >= 0 ? 1 : -1;
+    const slope = Math.cos(phase) * w.amp * w.freq * 1.8;
+    const angle = Math.atan2(slope * dir, 1) * 0.55 + Math.sin(w.time * 0.0015 + w.bob) * 0.045;
+
+    ctx.save();
+    ctx.translate(w.x, yBase + bob);
+    ctx.rotate(angle);
+    ctx.scale(dir, 1);
+    ctx.globalAlpha = w.alpha;
+
+    const s = w.size;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.75);
+    g.addColorStop(0, 'rgba(96,140,255,.30)');
+    g.addColorStop(1, 'rgba(96,140,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.75, 0, Math.PI * 2); ctx.fill();
+
+    ctx.drawImage(logo, -s / 2, -s / 2, s, s);
+    ctx.restore();
   }
 
   const LINK_DIST = 132;
 
-  function draw(t) {
-    // --- background wash ---
+  function draw(t, dt) {
     const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#05060c');
-    g.addColorStop(0.55, '#080a14');
-    g.addColorStop(1, '#0a0710');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    g.addColorStop(0, '#05060c'); g.addColorStop(0.55, '#080a14'); g.addColorStop(1, '#0a0710');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-    // --- aurora blobs ---
     ctx.globalCompositeOperation = 'lighter';
     for (const b of blobs) {
       const cx = (b.x + Math.sin(t * b.sp + b.ph) * 0.10) * W;
@@ -204,11 +257,8 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    // --- parallax offset ---
-    const px = (mouse.x - 0.5) * 26;
-    const py = (mouse.y - 0.5) * 26;
+    const px = (mouse.x - 0.5) * 26, py = (mouse.y - 0.5) * 26;
 
-    // --- links ---
     ctx.lineWidth = 1;
     for (let i = 0; i < particles.length; i++) {
       const a = particles[i];
@@ -218,7 +268,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
         const d2 = dx * dx + dy * dy;
         if (d2 > LINK_DIST * LINK_DIST) continue;
         const near = a.depth > 0.62 && b.depth > 0.62;
-        if (!near && d2 > (LINK_DIST * 0.68) ** 2) continue;   // far ones only link very close
+        if (!near && d2 > (LINK_DIST * 0.68) ** 2) continue;
         const alpha = (1 - Math.sqrt(d2) / LINK_DIST) * (near ? 0.20 : 0.07);
         ctx.strokeStyle = 'rgba(150,190,255,' + alpha.toFixed(3) + ')';
         ctx.beginPath();
@@ -228,7 +278,6 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
       }
     }
 
-    // --- particles ---
     for (const p of particles) {
       if (!reduce) {
         p.x += p.vx; p.y += p.vy; p.tw += 0.015;
@@ -236,8 +285,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
         if (p.y < -20) p.y = H + 20; if (p.y > H + 20) p.y = -20;
       }
       const tw = 0.65 + Math.sin(p.tw) * 0.35;
-      const x = p.x + px * p.depth;
-      const y = p.y + py * p.depth;
+      const x = p.x + px * p.depth, y = p.y + py * p.depth;
       const r = p.r * (1 + (p.depth - 0.5) * 0.5);
       const rg = ctx.createRadialGradient(x, y, 0, x, y, r * 4.2);
       rg.addColorStop(0, 'hsla(' + p.hue + ',100%,82%,' + (0.85 * tw * p.depth).toFixed(3) + ')');
@@ -245,23 +293,28 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
       rg.addColorStop(1, 'hsla(' + p.hue + ',100%,60%,0)');
       ctx.fillStyle = rg;
       ctx.beginPath(); ctx.arc(x, y, r * 4.2, 0, Math.PI * 2); ctx.fill();
-
       ctx.fillStyle = 'rgba(255,255,255,' + (0.80 * tw * p.depth).toFixed(3) + ')';
       ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.fill();
     }
+
+    // whales on top of the field, still under the glass panes
+    for (let i = whales.length - 1; i >= 0; i--) drawWhale(whales[i], dt);
   }
 
   let raf = 0, last = 0, running = true;
   function loop(t) {
     if (!running) return;
-    // smooth the parallax
     mouse.x += (mouse.tx - mouse.x) * 0.06;
     mouse.y += (mouse.ty - mouse.y) * 0.06;
-    if (t - last > 1000 / 45) { draw(t); last = t; }
+    if (t - last > 1000 / 45) {
+      const dt = last ? Math.min(0.1, (t - last) / 1000) : 0.016;
+      draw(t, dt);
+      last = t;
+    }
     raf = requestAnimationFrame(loop);
   }
 
-  addEventListener('resize', () => { resize(); draw(performance.now()); });
+  addEventListener('resize', () => { resize(); draw(performance.now(), 0.016); });
   addEventListener('mousemove', (e) => {
     mouse.tx = e.clientX / innerWidth;
     mouse.ty = e.clientY / innerHeight;
@@ -274,12 +327,16 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
   resize();
   raf = requestAnimationFrame(loop);
 
-  // tile sheen follows the cursor
   document.querySelectorAll('.tile').forEach((tile) => {
     tile.addEventListener('mousemove', (e) => {
       const r = tile.getBoundingClientRect();
-      tile.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      tile.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      const mx = (e.clientX - r.left) / r.width;
+      const my = (e.clientY - r.top) / r.height;
+      tile.style.setProperty('--mx', (mx * 100).toFixed(1) + '%');
+      tile.style.setProperty('--my', (my * 100).toFixed(1) + '%');
+      // rotate the specular rim so its brightest point faces the pointer
+      const deg = (Math.atan2(my - 0.5, mx - 0.5) * 180 / Math.PI + 90).toFixed(1);
+      tile.style.setProperty('--rim-angle', deg + 'deg');
     });
     tile.addEventListener('click', (e) => {
       const href = tile.getAttribute('href');
