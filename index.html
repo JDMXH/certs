@@ -5,42 +5,97 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>9178666</title>
 <style>
-:root{--bg:#ffffff;--ink:#111114;--dim:#6b6b73;--line:#e6e6ea;--accent:#4d6bfe}
-@media (prefers-color-scheme:dark){
-  :root{--bg:#0d0d0f;--ink:#f4f4f6;--dim:#9a9aa2;--line:#26262c}
-}
+:root{--bg:#ffffff;--ink:#111114;--dim:#6b6b73;--line:rgba(17,17,20,.10);--accent:#4d6bfe}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
-body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
-  background:var(--bg);color:var(--ink)}
+body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
 
-/* ---- static whale watermark, centred behind everything ---- */
-.whale{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:0}
-.whale img{width:min(62vw,720px);height:auto;opacity:.07;filter:saturate(.2)}
-@media (prefers-color-scheme:dark){ .whale img{opacity:.10;filter:saturate(.6) brightness(1.3)} }
+/* ---- whale: big, vivid blue, sits between the page and the glass ---- */
+.whale{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:1}
+.whale img{width:min(66vw,760px);height:auto;
+  /* push the logo into a saturated DeepSeek blue */
+  filter:saturate(2.4) hue-rotate(-6deg) brightness(.96) contrast(1.08);
+  opacity:.92;
+  animation:breathe 7s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
 
-/* ---- two panes ---- */
-.tiles{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:22px;height:100vh;padding:26px}
+/* a soft blue bloom behind the whale so it feels lit rather than pasted on */
+.halo{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(46% 40% at 50% 50%, rgba(77,107,254,.16), rgba(77,107,254,.06) 52%, transparent 74%)}
+
+/* ---- liquid glass panes ---- */
+.tiles{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:24px;height:100vh;padding:26px}
+
 .tile{position:relative;display:flex;flex-direction:column;justify-content:flex-end;
-  border-radius:26px;overflow:hidden;text-decoration:none;color:inherit;cursor:pointer;
-  background:var(--bg);
-  border:1px solid var(--line);
-  box-shadow:0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.06);
-  transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .25s}
-.tile:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));
-  box-shadow:0 2px 6px rgba(0,0,0,.05), 0 22px 52px rgba(77,107,254,.16)}
-.tile-inner{padding:34px 38px 38px}
-.tile .ico{font-size:42px;line-height:1;margin-bottom:16px;display:block;transition:transform .35s}
-.tile:hover .ico{transform:scale(1.1)}
-.tile h2{margin:0 0 8px;font-size:30px;font-weight:700;letter-spacing:.4px}
-.tile p{margin:0;color:var(--dim);font-size:14px}
-.tile .arrow{margin-top:22px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;
-  color:var(--accent);transition:gap .3s}
-.tile:hover .arrow{gap:16px}
-.badge{position:absolute;top:22px;right:24px;font-size:12px;padding:5px 12px;border-radius:999px;
-  color:var(--dim);background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line)}
+  border-radius:30px;overflow:hidden;text-decoration:none;color:var(--ink);cursor:pointer;
+  isolation:isolate;
+  /* the glass body: a faint white veil so the whale behind reads as "through glass" */
+  background:linear-gradient(180deg, rgba(255,255,255,.62) 0%, rgba(255,255,255,.46) 46%, rgba(255,255,255,.56) 100%);
+  border:1px solid rgba(255,255,255,.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -1px 0 rgba(255,255,255,.55),
+    inset 1px 0 0 rgba(255,255,255,.65),
+    inset -1px 0 0 rgba(255,255,255,.65),
+    0 1px 2px rgba(17,17,20,.06),
+    0 18px 48px rgba(17,17,20,.10);
+  transition:transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s, border-color .35s;
+}
 
-.wipe{position:fixed;inset:0;z-index:99;background:var(--bg);opacity:0;pointer-events:none;transition:opacity .18s ease}
+/* frosted layer: blurs whatever is behind (the whale) inside the pane */
+.tile .frost{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  backdrop-filter:blur(18px) saturate(200%) brightness(1.04);
+  -webkit-backdrop-filter:blur(18px) saturate(200%) brightness(1.04)}
+
+/* edge lens: extra blur pulled toward the rim, masked to the border area */
+.tile .lens{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  backdrop-filter:blur(5px) saturate(260%) contrast(1.06);
+  -webkit-backdrop-filter:blur(5px) saturate(260%) contrast(1.06);
+  -webkit-mask:radial-gradient(150% 140% at 50% 50%, transparent 40%, #000 74%);
+  mask:radial-gradient(150% 140% at 50% 50%, transparent 40%, #000 74%)}
+
+/* specular rim: bright ring, its angle follows the pointer */
+.tile::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;z-index:3;
+  background:linear-gradient(var(--rim-angle,150deg),
+    rgba(120,160,255,.95) 0%,
+    rgba(255,255,255,.85) 16%,
+    rgba(255,255,255,.25) 34%,
+    rgba(255,255,255,.10) 58%,
+    rgba(255,255,255,.80) 84%,
+    rgba(120,160,255,.95) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  pointer-events:none;transition:opacity .35s}
+
+/* pointer highlight */
+.tile .sheen{position:absolute;inset:0;z-index:0;opacity:0;pointer-events:none;transition:opacity .45s;
+  background:radial-gradient(520px 280px at var(--mx,50%) var(--my,0%),
+    rgba(255,255,255,.75), rgba(255,255,255,.22) 34%, transparent 66%)}
+.tile:hover .sheen{opacity:1}
+
+/* faint colour wash inside the glass */
+.tile .tint{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(140deg, rgba(77,107,254,.10), rgba(77,107,254,.02) 40%, rgba(255,255,255,0) 70%)}
+
+.tile:hover{transform:translateY(-7px);border-color:#fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 -1px 0 rgba(255,255,255,.6),
+    0 2px 4px rgba(17,17,20,.06),
+    0 30px 66px rgba(77,107,254,.22)}
+
+.tile-inner{padding:34px 38px 38px;position:relative;z-index:2}
+.tile .ico{font-size:42px;line-height:1;margin-bottom:16px;display:block;transition:transform .4s}
+.tile:hover .ico{transform:scale(1.1)}
+.tile h2{margin:0 0 8px;font-size:30px;font-weight:750;letter-spacing:.4px}
+.tile p{margin:0;color:var(--dim);font-size:14px}
+.tile .arrow{margin-top:22px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:650;color:var(--accent);transition:gap .3s}
+.tile:hover .arrow{gap:16px}
+.badge{position:absolute;top:22px;right:24px;z-index:2;font-size:12px;padding:5px 12px;border-radius:999px;
+  color:var(--dim);background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);
+  backdrop-filter:blur(8px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+
+.wipe{position:fixed;inset:0;z-index:99;background:var(--bg);opacity:0;pointer-events:none;transition:opacity .18s}
 .wipe.on{opacity:1}
 
 @media (max-width:820px){
@@ -48,16 +103,18 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
   .tile-inner{padding:22px 24px 26px}
   .tile .ico{font-size:32px;margin-bottom:10px}
   .tile h2{font-size:22px}
-  .whale img{width:80vw}
+  .whale img{width:86vw}
 }
+@media (prefers-reduced-motion:reduce){ .whale img{animation:none} }
 </style>
 </head>
 <body>
-
+<div class="halo"></div>
 <div class="whale"><img src="data:image/png;base64,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" alt=""></div>
 
 <div class="tiles">
   <a class="tile" href="album.html">
+    <span class="frost"></span><span class="lens"></span><span class="tint"></span><span class="sheen"></span>
     <span class="badge">相册</span>
     <div class="tile-inner">
       <span class="ico">🖼️</span>
@@ -67,6 +124,7 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
     </div>
   </a>
   <a class="tile" href="links.html">
+    <span class="frost"></span><span class="lens"></span><span class="tint"></span><span class="sheen"></span>
     <span class="badge">珍藏资源</span>
     <div class="tile-inner">
       <span class="ico">📚</span>
@@ -80,6 +138,15 @@ body{font:16px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-ser
 <div class="wipe" id="wipe"></div>
 <script>
 document.querySelectorAll('.tile').forEach((tile) => {
+  tile.addEventListener('mousemove', (e) => {
+    const r = tile.getBoundingClientRect();
+    const mx = (e.clientX - r.left) / r.width;
+    const my = (e.clientY - r.top) / r.height;
+    tile.style.setProperty('--mx', (mx * 100).toFixed(1) + '%');
+    tile.style.setProperty('--my', (my * 100).toFixed(1) + '%');
+    const deg = (Math.atan2(my - 0.5, mx - 0.5) * 180 / Math.PI + 90).toFixed(1);
+    tile.style.setProperty('--rim-angle', deg + 'deg');
+  });
   tile.addEventListener('click', (e) => {
     const href = tile.getAttribute('href');
     if (!href) return;
